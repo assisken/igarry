@@ -7,36 +7,48 @@ LOGGER = Logger.new nil
 
 module Igarry
   describe CommandController do
-    before :all do
-      @command_admin = CommandClass.new(:test_admin, permissions: [:ADMIN]) do
-        'I\'m test command'
-      end
-      @command = CommandClass.new(:test, permissions: [:ALL]) do
-        'Hello there!'
-      end
-      @command_controller = Igarry::CommandController.new
-      @command_controller.add @command_admin
-      @command_controller.add @command
+    let(:controller)    { Igarry::CommandController.new }
+    let(:user_command)  { Command.new(:test, permissions: [:ALL]) { 'Hello there!' } }
+    let(:admin_command) { Command.new(:test_admin, permissions: [:ADMIN]) { 'I\'m test command' } }
+    before do
+      controller.add user_command
+      controller.add admin_command
     end
 
-    context 'using commands' do
-      it 'must correctly transform string to symbol' do
-        expect(@command_controller.get_command('/test').name).to be(:test)
-      end
 
-      it 'must correctly call command' do
-        expect(@command_controller.get_command('/test').call(nil, nil)).to eq('Hello there!')
-        expect { @command_controller.get_command('test').call(nil, nil) }
+    describe '.add' do
+      subject { controller.instance_variable_get(:@container) }
+
+      it('includes a user command') { expect include user_command.name }
+      it('includes an admin command') { expect include admin_command.name }
+    end
+
+    describe '.get_command' do
+      subject(:command) { controller.get_command('/test') }
+      subject(:wrong_command) { controller.get_command('test') }
+
+      it('transforms a string to a symbol') { expect(command.name).to be(:test) }
+      it('calls a command') { expect(command.call(nil, nil)).to eq('Hello there!') }
+
+      it 'calls wrong command' do
+        expect { wrong_command.call(nil, nil) }
           .to raise_error(NoMethodError, 'undefined method `call\' for nil:NilClass')
       end
+    end
 
-      it 'must recognise permissions correctly' do
-        admin = ENV['ADMIN']
-        id = 0
-        expect(@command_controller.permission?(@command_admin, admin)).to be true
-        expect(@command_controller.permission?(@command_admin, id)).to be false
-        expect(@command_controller.permission?(@command, admin)).to be true
-        expect(@command_controller.permission?(@command, id)).to be true
+    describe '.permission?' do
+      context 'admin' do
+        subject(:admin) { ENV['ADMIN'] }
+
+        it('passes admin command') { expect(controller.permission?(user_command, admin)).to be_truthy }
+        it('passes user command') { expect(controller.permission?(admin_command, admin)).to be_truthy }
+      end
+
+      context 'user' do
+        subject(:user) { 0 }
+
+        it('passes user command') { expect(controller.permission?(user_command, user)).to be_truthy }
+        it('does\'t pass admin command') { expect(controller.permission?(admin_command, user)).to be_falsey }
       end
     end
   end

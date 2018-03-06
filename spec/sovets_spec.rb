@@ -4,38 +4,44 @@ require 'fileutils'
 
 module Igarry
   describe Sovets do
-    before :all do
-      @file = 'test_sovets.txt'
-      @rand_file = 'test_' + SecureRandom.gen_random(5).delete("\000")
-      @sovets = Sovets.instance
+    let(:file)         { StringIO.new "test\nsovet" }
+    let(:empty_file)   { StringIO.new }
+    let(:sovets)       { Sovets.new file }
+    let(:empty_sovets) { Sovets.new empty_file }
 
-      File.write @file, "test\nsovet"
+    describe 'loading' do
+      it('contains test, sovet') { expect(sovets.container).to contain_exactly('test', 'sovet') }
+      it('contains empty file') { expect(empty_sovets.container).to be_empty }
     end
 
-    after :all do
-      FileUtils.remove @file
-      FileUtils.remove @rand_file
-    end
-
-    context 'file loading' do
-      it 'should contain test and sovet' do
-        @sovets.load @file
-        expect(@sovets.sovets).to contain_exactly('test', 'sovet')
+    describe '.random' do
+      context 'not empty' do
+        subject { sovets.random }
+        it('returns a random sovet') { expect satisfy { |value| %w[test sovet].include? value } }
       end
 
-      it 'should be empty' do
-        @sovets.load @rand_file
-        expect(@sovets.sovets).to be_empty
-        expect(File.exist?(@rand_file)).to be true
+      context 'empty' do
+        it('returns a nil') { expect(empty_sovets.random).to be_nil }
       end
     end
 
-    context 'corrent working' do
-      it 'should get random sovet' do
-        @sovets.load @file
-        expect(@sovets.random).to(satisfy) { |value| %w[test sovet].include? value }
-        @sovets.load @rand_file
-        expect(@sovets.random).to be_nil
+    describe '.reload' do
+      context 'sovets' do
+        it('nothing happened') { expect(sovets.reload).to contain_exactly('test', 'sovet') }
+
+        subject(:new) { StringIO.new file.string + "\nthird" }
+        it('adds new item') do
+          expect(sovets.reload(new))
+            .to contain_exactly('test', 'sovet', 'third')
+        end
+      end
+
+      context 'empty' do
+        it('nothing happened') { expect(empty_sovets.reload).to be_empty }
+        it('should contain test, sovet') do
+          expect(empty_sovets.reload(file))
+            .to contain_exactly('test', 'sovet')
+        end
       end
     end
   end

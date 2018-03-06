@@ -1,25 +1,29 @@
-require 'singleton'
-require 'fileutils'
-
 module Igarry
   class Sovets
-    include Singleton
-    attr_reader :sovets
+    attr_reader :container
 
-    def initialize
-      @sovets = []
-      load 'sovets.txt'
+    def initialize(file = nil)
+      @file = file
+      @container = file.nil? ? [] : @file.read.split("\n")
     end
 
-    def load(path)
-      @sovets = File.open(path, 'r').read.split("\n")
-    rescue Errno::ENOENT
-      FileUtils.touch path
-      @sovets = []
+    def empty?
+      @container.empty?
     end
 
     def random
-      @sovets.sample
+      @container.sample
+    end
+
+    def reload(file = nil)
+      LOGGER.info 'Reloading sovets...'
+      @container = if file.nil?
+                     @file.rewind
+                     @file.read.split("\n")
+                   else
+                     file.read.split("\n")
+                   end
     end
   end
 end
+File
