@@ -9,19 +9,18 @@ LOGGER.formatter = proc do |severity, datetime, progname, msg|
   "[#{date_format}] #{severity} (#{progname}): #{msg}\n"
 end
 
+sov_file = File.open 'sovets.txt', 'a+'
+bot = Igarry::Bot.new file: sov_file
 
+Dir["#{File.dirname(__FILE__)}/igarry/commands/*.rb"].each { |file| require file }
 
-file = File.open 'sovets.txt', 'a+'
-bot = Igarry::Bot.new file: file
-
-require 'igarry/commands/sovet'
-require 'igarry/commands/reload'
-
-bot.include! Igarry::Sovet
+bot.include! Igarry::Add
+bot.include! Igarry::Cancel
 bot.include! Igarry::Reload
+bot.include! Igarry::Sovet
 
 LOGGER.debug bot.sovets.container
 
 bot.start
 
-file.close
+sov_file.close

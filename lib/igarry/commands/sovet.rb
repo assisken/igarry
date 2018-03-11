@@ -1,5 +1,3 @@
-require 'igarry/command'
-require 'igarry/sovets'
 require 'igarry/command_container'
 
 module Igarry

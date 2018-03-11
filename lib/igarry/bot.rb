@@ -6,12 +6,20 @@ module Igarry
   class Bot < Telegram::Bot::Client
     attr_reader :sovets
 
-    def initialize(h = {})
+    def initialize(args = {})
       @token              = ENV['BOT_TOKEN']
       @command_controller = CommandController.new
-      @sovets             = Sovets.new h[:file]
-      @last_chat_id = nil
-      super @token, h
+      @sovets             = Sovets.new args[:file]
+      @last_chat_id       = nil
+      super @token, args
+    end
+
+    def add_state(state, id)
+      @command_controller.add_state(state, id)
+    end
+
+    def remove_state(id)
+      @command_controller.remove_state id
     end
 
     def command(command)

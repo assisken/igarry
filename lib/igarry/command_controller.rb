@@ -1,12 +1,13 @@
 require 'igarry/command'
+require 'igarry/state_controller'
 require 'logger'
 
 module Igarry
   class CommandController
     def initialize
       @container = {}
+      @state_controller = StateController.new
       @users = { ADMIN: [ENV['ADMIN'].to_i] }
-      p @users
       @permissions = %i[ALL ADMIN].freeze
     end
 
@@ -19,28 +20,37 @@ module Igarry
 
     def call(bot, message)
       command = get_command message.text
-      if !command.nil? && (permission? command, message.from.id)
-        command.call bot, message
-      else
-        LOGGER.info "User #{message.from.first_name} (#{message.from.id}) has no permission to command \"#{command.name}\""
+      author = message.from.id
+      begin
+        command.call bot, message if !command.nil? && (permission? command, author) && (@state_controller.has? command.state, author)
+      rescue RuntimeError => e
+        LOGGER.error e
+        e
       end
     end
 
+    def add_state(state, id)
+      @state_controller.add state, id
+    end
+
+    def remove_state(id)
+      @state_controller.remove id
+    end
+
+    private
+
     def get_command(command_name)
       command_name[0] = ''
-      begin
-        @container[command_name.to_sym]
-      rescue NoMethodError => e
-        LOGGER.error e
-        nil
-      end
+      name = command_name.to_sym
+      raise 'No such command' unless @container.include? name
+      @container[name]
     end
 
     def permission?(command, user_id)
       return true if command.permissions.include? :ALL
-      ret = false
-      command.permissions.each { |perm| ret = true if @users[perm].include? user_id }
-      ret
+      has_permission = false
+      command.permissions.each { |perm| return true if @users[perm].include? user_id }
+      raise 'No such permissions!' unless has_permission
     end
   end
 end
